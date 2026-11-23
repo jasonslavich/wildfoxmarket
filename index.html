@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Wild Fox Market</title>
+<style>
+  body { background:#FAF8F5; color:#2C3E35; font-family:system-ui,sans-serif; margin:0; padding:0; }
+  header { background:#FAF8F5; border-bottom:1px solid #E5E0D8; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:10; }
+  .logo { font-family:Georgia,serif; font-size:1.3rem; font-weight:bold; cursor:pointer; display:flex; align-items:center; gap:8px; }
+  .fox { background:#C86D51; color:#fff; padding:6px 10px; border-radius:10px; }
+  .btn { border:none; border-radius:99px; padding:9px 16px; font-weight:600; cursor:pointer; font-size:0.9rem; }
+  .btn-fox { background:#C86D51; color:#fff; }
+  .btn-sage { background:#E8EDE9; color:#2C3E35; }
+  .btn-forest { background:#2C3E35; color:#FAF8F5; }
+  .btn-del { background:#F8E5E2; color:#9E3B2B; }
+  .hero { text-align:center; padding:32px 20px 18px; }
+  .hero h1 { font-family:Georgia,serif; font-size:2.1rem; margin:10px 0; }
+  .controls { max-width:900px; margin:0 auto 22px; padding:0 16px; text-align:center; }
+  .search { padding:10px 16px; width:100%; max-width:420px; border-radius:99px; border:1px solid #E5E0D8; font-size:0.95rem; margin-bottom:12px; }
+  .chips { display:flex; justify-content:center; flex-wrap:wrap; gap:8px; }
+  .chip { background:#fff; border:1px solid #E5E0D8; padding:7px 14px; border-radius:99px; cursor:pointer; }
+  .chip.active { background:#2C3E35; color:#FAF8F5; }
+  .grid { max-width:1100px; margin:0 auto 60px; padding:0 20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:20px; }
+  .card { background:#fff; border:1px solid #E5E0D8; border-radius:16px; overflow:hidden; cursor:pointer; position:relative; }
+  .card img { width:100%; height:180px; object-fit:cover; display:block; background:#E8EDE9; }
+  .fav { position:absolute; top:10px; right:10px; background:#FAF8F5; border:none; width:34px; height:34px; border-radius:50%; font-size:1.1rem; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.15); }
+  .fav.on { color:#C86D51; }
+  .price { position:absolute; top:142px; left:10px; background:#FAF8F5; padding:4px 12px; border-radius:99px; font-weight:bold; font-size:0.85rem; }
+  .card-body { padding:14px; }
+  .cat { color:#C86D51; font-size:0.75rem; font-weight:bold; text-transform:uppercase; }
+  .modal { display:none; position:fixed; inset:0; background:rgba(44,62,53,0.6); align-items:center; justify-content:center; padding:16px; z-index:50; }
+  .modal.open { display:flex; }
+  .box { background:#FAF8F5; padding:22px; border-radius:16px; max-width:440px; width:100%; max-height:90vh; overflow-y:auto; position:relative; }
+  .close { position:absolute; top:12px; right:12px; background:#E8EDE9; border:none; width:30px; height:30px; border-radius:50%; font-size:1.1rem; cursor:pointer; }
+  input, select, textarea { width:100%; padding:9px; margin:6px 0 12px; border:1px solid #E5E0D8; border-radius:8px; box-sizing:border-box; font-family:inherit; }
+  .cam-box { background:#E8EDE9; padding:10px; border-radius:12px; margin:6px 0 12px; text-align:center; }
+  video, #snapPreview { width:100%; max-height:200px; border-radius:10px; object-fit:cover; display:none; margin-top:8px; }
+  .empty-state { grid-column:1/-1; text-align:center; padding:48px 20px; background:#fff; border:1px dashed #D5DFD7; border-radius:16px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo" onclick="resetAll()"><span class="fox">🦊</span> The Wild Fox Market</div>
+  <div>
+    <button class="btn btn-sage" id="favBtn" onclick="toggleFavFilter()">♥ Favorites (0)</button>
+    <button class="btn btn-fox" onclick="openPost()">+ Post an Item</button>
+  </div>
+</header>
+
+<div class="hero">
+  <span style="background:#E8EDE9;padding:4px 12px;border-radius:99px;font-size:0.8rem;">thewildfoxmarket.com</span>
+  <h1>Curated finds, peacefully traded.</h1>
+  <p style="color:#55695F;">Snap a photo, share goods you no longer need, and discover local treasures.</p>
+</div>
+
+<div class="controls">
+  <input class="search" id="searchBox" placeholder="Search items or neighborhoods..." oninput="draw()">
+  <div class="chips" id="chips">
+    <button class="chip active" onclick="setCat('All',this)">All Finds</button>
+    <button class="chip" onclick="setCat('Home & Decor',this)">Home & Decor</button>
+    <button class="chip" onclick="setCat('Furniture',this)">Furniture</button>
+    <button class="chip" onclick="setCat('Outdoors',this)">Outdoors</button>
+    <button class="chip" onclick="setCat('Free / Pass Along',this)">Free / Pass Along</button>
+  </div>
+</div>
+
+<div class="grid" id="grid"></div>
+
+<div class="modal" id="postModal">
+  <div class="box">
+    <button class="close" onclick="closePost()">×</button>
+    <h2 style="font-family:Georgia,serif;margin-top:0;">Post a Find</h2>
+    <label>Take or Upload a Photo</label>
+    <div class="cam-box">
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+        <button type="button" class="btn btn-forest" onclick="startCam()">📷 Open Camera</button>
+        <button type="button" class="btn btn-fox" id="snapBtn" style="display:none;" onclick="takeSnap()">📸 Snap Photo</button>
+        <label class="btn btn-sage" style="margin:0;">📁 Upload File<input type="file" id="pPhoto" accept="image/*" capture="environment" style="display:none;" onchange="loadImg(event)"></label>
+      </div>
+      <video id="camVideo" autoplay playsinline></video>
+      <canvas id="camCanvas" style="display:none;"></canvas>
+      <img id="snapPreview" alt="Preview">
+    </div>
+    <label>Item Title *</label>
+    <input id="pTitle" placeholder="e.g., Ceramic Vase">
+    <label>Category</label>
+    <select id="pCat"><option>Home & Decor</option><option>Furniture</option><option>Outdoors</option><option>Free / Pass Along</option></select>
+    <label>Price ($0 for Free)</label>
+    <input type="number" id="pPrice" value="20" min="0">
+    <label>Neighborhood</label>
+    <input id="pLoc" placeholder="e.g., Fox Hollow">
+    <label>Description</label>
+    <textarea id="pDesc" rows="2" placeholder="Pickup or condition notes..."></textarea>
+    <button class="btn btn-fox" style="width:100%;" onclick="publishItem()">Publish Listing</button>
+  </div>
+</div>
+
+<div class="modal" id="detailModal"><div class="box" id="detailBox"></div></div>
+<script>
+  let items = [];
+  let curCat = 'All', favOnly = false, newImg = '', camStream = null;
+
+  function draw() {
+    document.getElementById('favBtn').innerText = '♥ Favorites (' + items.filter(x=>x.fav).length + ')';
+    const q = document.getElementById('searchBox').value.toLowerCase();
+    const list = items.filter(x => (!favOnly || x.fav) && (curCat==='All' || x.cat===curCat) && (x.title.toLowerCase().includes(q) || x.loc.toLowerCase().includes(q)));
+    
+    if (items.length === 0) {
+      document.getElementById('grid').innerHTML = `
+        <div class="empty-state">
+          <div style="font-size:2rem;margin-bottom:8px;">🦊</div>
+          <h3 style="font-family:Georgia,serif;margin:0 0 6px;">The market is quiet right now</h3>
+          <p style="color:#55695F;margin:0 0 16px;">Be the first to snap a photo and share a find!</p>
+          <button class="btn btn-fox" onclick="openPost()">+ Post the First Item</button>
+        </div>`;
+      return;
+    }
+
+    document.getElementById('grid').innerHTML = list.length ? list.map(x => `
+      <div class="card" onclick="openDetail(${x.id})">
+        <img src="${x.img}">
+        <button class="fav ${x.fav?'on':''}" onclick="toggleFav(event,${x.id})">${x.fav?'♥':'♡'}</button>
+        <span class="price">${x.sold ? 'Claimed' : (x.price===0 ? 'Free' : '$'+x.price)}</span>
+        <div class="card-body"><div class="cat">${x.cat}</div><h3 style="margin:4px 0;">${x.title}</h3><small style="color:#55695F;">${x.loc} • By ${x.seller}</small></div>
+      </div>`).join('') : '<p style="grid-column:1/-1;text-align:center;color:#55695F;">No items match that filter.</p>';
+  }
+
+  function setCat(c, el) { curCat = c; document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active')); el.classList.add('active'); draw(); }
+  function toggleFavFilter() { favOnly = !favOnly; document.getElementById('favBtn').className = favOnly ? 'btn btn-forest' : 'btn btn-sage'; draw(); }
+  function resetAll() { curCat = 'All'; favOnly = false; document.getElementById('searchBox').value = ''; document.getElementById('favBtn').className = 'btn btn-sage'; document.querySelectorAll('.chip').forEach((b,idx)=>b.classList.toggle('active', idx===0)); draw(); }
+  function toggleFav(e, id) { e.stopPropagation(); const item = items.find(x=>x.id===id); item.fav = !item.fav; draw(); }
+  function openPost() { document.getElementById('postModal').classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  function stopCam() {
+    if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+    document.getElementById('camVideo').style.display = 'none';
+    document.getElementById('snapBtn').style.display = 'none';
+  }
+
+  function closePost() { stopCam(); closeModal('postModal'); }
+
+  async function startCam() {
+    try {
+      stopCam();
+      document.getElementById('snapPreview').style.display = 'none';
+      camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      const v = document.getElementById('camVideo');
+      v.srcObject = camStream;
+      v.style.display = 'block';
+      document.getElementById('snapBtn').style.display = 'inline-block';
+    } catch (err) {
+      alert('Camera access was blocked or unavailable. Try clicking "Upload File" instead!');
+    }
+  }
+
+  function takeSnap() {
+    const v = document.getElementById('camVideo');
+    const c = document.getElementById('camCanvas');
+    c.width = v.videoWidth || 640;
+    c.height = v.videoHeight || 480;
+    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+    newImg = c.toDataURL('image/jpeg', 0.85);
+    const p = document.getElementById('snapPreview');
+    p.src = newImg;
+    p.style.display = 'block';
+    stopCam();
+  }
+
+  function loadImg(e) {
+    stopCam();
+    const f = e.target.files[0];
+    if(!f) return;
+    const r = new FileReader();
+    r.onload = ev => {
+      newImg = ev.target.result;
+      const p = document.getElementById('snapPreview');
+      p.src = newImg;
+      p.style.display = 'block';
+    };
+    r.readAsDataURL(f);
+  }
+
+  function publishItem() {
+    const title = document.getElementById('pTitle').value.trim();
+    if(!title) { alert('Please enter an item title!'); return; }
+    const price = Number(document.getElementById('pPrice').value) || 0;
+    const cat = price===0 ? 'Free / Pass Along' : document.getElementById('pCat').value;
+    items.unshift({ id: Date.now(), title, cat, price, loc: document.getElementById('pLoc').value.trim() || 'Local', seller:'You', mine:true, desc: document.getElementById('pDesc').value.trim() || 'Listed on The Wild Fox Market.', img: newImg || 'https://unsplash.com', fav:false, sold:false, msgs:[] });
+    document.getElementById('pTitle').value = '';
+    document.getElementById('pDesc').value = '';
+    document.getElementById('snapPreview').style.display = 'none';
+    newImg = '';
+    closePost();
+    resetAll();
+  }
+
+  function openDetail(id) {
+    const x = items.find(i=>i.id===id);
+    document.getElementById('detailBox').innerHTML = `
+      <button class="close" onclick="closeModal('detailModal')">×</button>
+      <img src="${x.img}" style="width:100%;height:190px;object-fit:cover;border-radius:12px;">
+      <div class="cat" style="margin-top:10px;">${x.cat} • ${x.loc}</div>
+      <h2 style="font-family:Georgia,serif;margin:4px 0;">${x.title}</h2>
+      <p style="font-weight:bold;color:#C86D51;">${x.price===0 ? 'Free / Pass Along' : '$'+x.price}</p>
+      <p style="color:#55695F;">${x.desc}</p>
+      <button class="btn ${x.sold?'btn-sage':'btn-fox'}" style="width:100%;margin-bottom:8px;" ${x.sold?'disabled':''} onclick="claim(${x.id})">${x.sold ? 'Already Claimed' : (x.price===0 ? 'Claim Free Item' : 'Buy / Reserve for $'+x.price)}</button>
+      ${x.mine ? `<button class="btn btn-del" style="width:100%;margin-bottom:10px;" onclick="deletePost(${x.id})">Delete My Listing</button>` : ''}
+      <div style="background:#E8EDE9;padding:12px;border-radius:12px;"><strong>Message ${x.seller}</strong>
+        <div style="display:flex;gap:6px;margin-top:6px;"><input id="chatTxt" placeholder="Hi! Is this available?" style="margin:0;"><button class="btn btn-forest" onclick="sendMsg(${x.id})">Send</button></div>
+        ${x.msgs.map(m=>`<div style="background:#fff;padding:6px 10px;border-radius:8px;margin-top:6px;font-size:0.85rem;"><b>You:</b> ${m}</div>`).join('')}
+      </div>`;
+    document.getElementById('detailModal').classList.add('open');
+  }
+
+  function deletePost(id) {
+    items = items.filter(x=>x.id!==id);
+    closeModal('detailModal');
+    draw();
+  }
+
+  function claim(id) { items.find(x=>x.id===id).sold = true; draw(); openDetail(id); }
+  function sendMsg(id) { const txt = document.getElementById('chatTxt').value.trim(); if(!txt) return; items.find(x=>x.id===id).msgs.push(txt); openDetail(id); }
+  draw();
+</script>
+</body>
+</html>
